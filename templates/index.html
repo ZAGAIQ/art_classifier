@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impressionism Classifier Prototype</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --primary-gradient: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
+            --accent-glow: rgba(6, 182, 212, 0.15);
+            --success-color: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.2);
+            --fail-color: #f59e0b;
+            --fail-glow: rgba(245, 158, 11, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(168, 85, 247, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        header {
+            width: 100%;
+            max-width: 1200px;
+            padding: 2.5rem 1.5rem 1.5rem;
+            text-align: center;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 1.5rem 4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            align-items: center;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .app-container {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Upload Section */
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .dropzone {
+            flex-grow: 1;
+            min-height: 350px;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            cursor: pointer;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.04);
+            box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.05);
+            transform: scale(1.01);
+        }
+
+        .dropzone-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1.2rem;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #06b6d4;
+            font-size: 2.2rem;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .dropzone:hover .upload-icon {
+            transform: translateY(-5px);
+            color: #a855f7;
+        }
+
+        .upload-text-main {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+
+        .upload-text-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Image Preview inside dropzone */
+        .preview-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 16px;
+            background-color: #090d16;
+            display: none;
+            padding: 0.5rem;
+        }
+
+        .btn-analyze {
+            width: 100%;
+            padding: 1.1rem;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+            background: var(--primary-gradient);
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(168, 85, 247, 0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .btn-analyze:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(6, 182, 212, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-analyze:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Results Section */
+        .results-section {
+            border-left: 1px solid var(--border-color);
+            padding-left: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        @media (max-width: 900px) {
+            .results-section {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                padding-left: 0;
+                padding-top: 2.5rem;
+            }
+        }
+
+        .results-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .placeholder-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            animation: pulse 2s infinite;
+        }
+
+        .results-content {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Circular Progress Meter */
+        .meter-container {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin-bottom: 1.5rem;
+        }
+
+        .meter-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .meter-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.03);
+            stroke-width: 12;
+        }
+
+        .meter-fill {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-dasharray: 502; /* 2 * PI * r (r=80) */
+            stroke-dashoffset: 502;
+            transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .meter-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .meter-percent {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+        }
+
+        .meter-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: -2px;
+        }
+
+        /* Classification Badge */
+        .status-badge {
+            padding: 0.6rem 1.5rem;
+            border-radius: 99px;
+            font-weight: 700;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .status-badge.is-imp {
+            background-color: var(--success-glow);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .status-badge.not-imp {
+            background-color: var(--fail-glow);
+            color: var(--fail-color);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        /* Similar paintings section */
+        .gallery-container {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            gap: 1.2rem;
+            animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gallery-title {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            border-left: 4px solid #06b6d4;
+            padding-left: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .painting-card {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .painting-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(6, 182, 212, 0.3);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(6, 182, 212, 0.1);
+        }
+
+        .painting-img-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 75%; /* 4:3 Aspect Ratio */
+            overflow: hidden;
+            background: #090d16;
+        }
+
+        .painting-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .painting-card:hover .painting-img {
+            transform: scale(1.08);
+        }
+
+        .similarity-tag {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(3, 7, 18, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #06b6d4;
+            z-index: 2;
+        }
+
+        .painting-info {
+            padding: 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .painting-artist {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .painting-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(6, 182, 212, 0.1);
+            border-radius: 50%;
+            border-top-color: #06b6d4;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Lightbox modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(3, 7, 18, 0.95);
+            backdrop-filter: blur(10px);
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            max-width: 90%;
+            max-height: 85%;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-caption {
+            position: absolute;
+            bottom: 30px;
+            color: white;
+            text-align: center;
+            font-size: 1.1rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 0.8rem 2rem;
+            border-radius: 99px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 80%;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: var(--text-muted);
+            font-size: 2.5rem;
+            font-weight: 300;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .close-modal:hover {
+            color: white;
+        }
+
+        /* Animations */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Impressionism AI</h1>
+        <p class="subtitle">Загрузите картину, чтобы определить её стиль по классификатору на базе CLIP, и найдите похожие произведения</p>
+    </header>
+
+    <main>
+        <div class="app-container">
+            <!-- Left Side: Upload & Control -->
+            <div class="upload-section">
+                <div class="dropzone" id="dropzone">
+                    <img src="" alt="Preview" class="preview-img" id="previewImg">
+                    <div class="dropzone-content" id="dropzoneContent">
+                        <div class="upload-icon">🎨</div>
+                        <div>
+                            <p class="upload-text-main">Выберите файл или перетащите сюда</p>
+                            <p class="upload-text-sub">Поддерживаются PNG, JPG, JPEG</p>
+                        </div>
+                    </div>
+                    <input type="file" class="file-input" id="fileInput" accept="image/*">
+                </div>
+                <button class="btn-analyze" id="btnAnalyze" disabled>
+                    <span>Анализировать произведение</span>
+                </button>
+            </div>
+
+            <!-- Right Side: Classification Results -->
+            <div class="results-section">
+                <!-- Initial state / Placeholder -->
+                <div class="results-placeholder" id="placeholder">
+                    <div class="placeholder-icon">🔍</div>
+                    <p>Результаты появятся после анализа изображения</p>
+                </div>
+
+                <!-- Loader -->
+                <div class="loader" id="loader"></div>
+
+                <!-- Actual Results -->
+                <div class="results-content" id="resultsContent">
+                    <div class="meter-container">
+                        <svg class="meter-svg">
+                            <defs>
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#a855f7" />
+                                    <stop offset="100%" stop-color="#06b6d4" />
+                                </linearGradient>
+                            </defs>
+                            <circle class="meter-bg" cx="90" cy="90" r="80"></circle>
+                            <circle class="meter-fill" id="meterFill" cx="90" cy="90" r="80"></circle>
+                        </svg>
+                        <div class="meter-text">
+                            <div class="meter-percent" id="meterPercent">0%</div>
+                            <div class="meter-label">вероятность</div>
+                        </div>
+                    </div>
+                    
+                    <div class="status-badge" id="statusBadge">Определяем...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar paintings bottom section -->
+        <div class="gallery-container" id="galleryContainer">
+            <h2 class="gallery-title">Похожие картины из базы данных</h2>
+            <div class="grid-container" id="paintingsGrid">
+                <!-- Dynamic cards insertion -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Lightbox -->
+    <div class="modal" id="modal">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <img class="modal-content" id="modalImg" src="" alt="Full view">
+        <div class="modal-caption" id="modalCaption">Caption</div>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const previewImg = document.getElementById('previewImg');
+        const dropzoneContent = document.getElementById('dropzoneContent');
+        const btnAnalyze = document.getElementById('btnAnalyze');
+        const placeholder = document.getElementById('placeholder');
+        const loader = document.getElementById('loader');
+        const resultsContent = document.getElementById('resultsContent');
+        const meterPercent = document.getElementById('meterPercent');
+        const meterFill = document.getElementById('meterFill');
+        const statusBadge = document.getElementById('statusBadge');
+        const galleryContainer = document.getElementById('galleryContainer');
+        const paintingsGrid = document.getElementById('paintingsGrid');
+        
+        // Modal Lightbox Elements
+        const modal = document.getElementById('modal');
+        const modalImg = document.getElementById('modalImg');
+        const modalCaption = document.getElementById('modalCaption');
+        const closeModal = document.getElementById('closeModal');
+
+        let selectedFile = null;
+
+        // Trigger file input dialog
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        // File drag and drop events
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Пожалуйста, выберите файл изображения.');
+                return;
+            }
+            selectedFile = file;
+            btnAnalyze.disabled = false;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                dropzoneContent.style.opacity = '0';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Analyze action
+        btnAnalyze.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // Update UI to loading state
+            placeholder.style.display = 'none';
+            resultsContent.style.display = 'none';
+            galleryContainer.style.display = 'none';
+            loader.style.display = 'block';
+            btnAnalyze.disabled = true;
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка обработки изображения на сервере.');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                alert('Произошла ошибка при анализе: ' + error.message);
+                placeholder.style.display = 'flex';
+                loader.style.display = 'none';
+            } finally {
+                btnAnalyze.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            loader.style.display = 'none';
+            resultsContent.style.display = 'flex';
+
+            const percentage = Math.round(data.probability * 100);
+            meterPercent.innerText = `${percentage}%`;
+
+            // Update radial progress circle
+            const r = 80;
+            const circumference = 2 * Math.PI * r;
+            const offset = circumference - (data.probability * circumference);
+            meterFill.style.strokeDashoffset = offset;
+
+            // Set classification status
+            if (data.is_impressionism) {
+                statusBadge.innerText = 'ИМПРЕССИОНИЗМ';
+                statusBadge.className = 'status-badge is-imp';
+            } else {
+                statusBadge.innerText = 'ДРУГОЙ СТИЛЬ';
+                statusBadge.className = 'status-badge not-imp';
+            }
+
+            // Load gallery of similar paintings if available
+            if (data.similar_images && data.similar_images.length > 0) {
+                paintingsGrid.innerHTML = '';
+                data.similar_images.forEach(painting => {
+                    const card = document.createElement('div');
+                    card.className = 'painting-card';
+                    
+                    const imgUrl = `/dataset/${painting.filename}`;
+                    card.innerHTML = `
+                        <div class="painting-img-wrapper">
+                            <div class="similarity-tag">${painting.similarity.toFixed(1)}% схожесть</div>
+                            <img class="painting-img" src="${imgUrl}" alt="${painting.title}" loading="lazy">
+                        </div>
+                        <div class="painting-info">
+                            <span class="painting-artist">${painting.artist}</span>
+                            <span class="painting-title" title="${painting.title}">${painting.title}</span>
+                        </div>
+                    `;
+
+                    // Click event to open lightbox
+                    card.addEventListener('click', () => {
+                        modalImg.src = imgUrl;
+                        modalCaption.innerHTML = `<strong>${painting.artist}</strong> — <em>«${painting.title}»</em> (Сходство: ${painting.similarity.toFixed(1)}%)`;
+                        modal.classList.add('show');
+                    });
+
+                    paintingsGrid.appendChild(card);
+                });
+                galleryContainer.style.display = 'flex';
+            } else {
+                galleryContainer.style.display = 'none';
+            }
+        }
+
+        // Close Lightbox modal
+        closeModal.addEventListener('click', () => {
+            modal.classList.remove('show');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target === closeModal) {
+                modal.classList.remove('show');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                modal.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
