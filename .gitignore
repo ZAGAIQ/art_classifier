@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Large Datasets and Archives
+balanced_art_dataset/
+impress.rar
+
+# Precomputed Embeddings and Databases
+embeddings.npz
+*.npz
+
+# Trained Models
+impressionism_classifier.keras
+*.keras
+*.h5
+
+# Generated Metrics and Plots
+metrics.json
+learning_curves.png
+confusion_matrix.png
+roc_curve.png
+
+# IDEs and System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
