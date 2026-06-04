@@ -1,14 +1,20 @@
 import os
 import csv
 import numpy as np
-import tensorflow as tf
 import keras
 import torch
+from flask_cors import CORS
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 from flask import Flask, request, jsonify, render_template, send_from_directory
 
 app = Flask(__name__, template_folder='templates')
+CORS(app, origins="*")
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({"error": "File size exceeds the maximum limit of 8 MB"}), 413
 
 # Global variables to store models and embeddings database
 classifier_model = None
@@ -102,6 +108,48 @@ def send_dataset_file(path):
     # Safe serving of images from dataset
     return send_from_directory('balanced_art_dataset', path)
 
+def perform_analysis(file, threshold, top_n):
+    # Load and convert image
+    img = Image.open(file.stream).convert("RGB")
+    
+    # Extract features using CLIP
+    inputs = clip_processor(images=img, return_tensors="pt").to(device)
+    with torch.no_grad():
+        query_features = clip_model.get_image_features(**inputs)
+        query_features = query_features / query_features.norm(p=2, dim=-1, keepdim=True)
+        query_emb = query_features.cpu().numpy().flatten()
+
+    # Predict probability
+    pred_prob = float(classifier_model.predict(np.expand_dims(query_emb, axis=0), verbose=0)[0][0])
+    is_impressionism = pred_prob >= threshold
+
+    similar_images = []
+    if is_impressionism and len(imp_embeddings) > 0:
+        # Calculate Cosine Similarities
+        similarities = np.dot(imp_embeddings, query_emb)
+        # Get top N indices
+        top_indices = np.argsort(similarities)[::-1][:top_n]
+
+        for idx in top_indices:
+            sim_score = float(similarities[idx])
+            sim_percentage = max(0.0, sim_score) * 100
+            rel_path = imp_filenames[idx]
+            basename = os.path.basename(rel_path)
+
+            # Retrieve metadata
+            meta = metadata_map.get(basename)
+            if not meta:
+                meta = parse_filename_fallback(rel_path)
+
+            similar_images.append({
+                "filename": rel_path.replace("\\", "/"),
+                "similarity": sim_percentage,
+                "artist": meta["artist"],
+                "title": meta["title"]
+            })
+            
+    return is_impressionism, pred_prob, similar_images
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
     if 'image' not in request.files:
@@ -115,53 +163,49 @@ def analyze():
     top_n = int(request.form.get('top_n', 6))
 
     try:
-        # Load and convert image
-        img = Image.open(file.stream).convert("RGB")
-        
-        # Extract features using CLIP
-        inputs = clip_processor(images=img, return_tensors="pt").to(device)
-        with torch.no_grad():
-            query_features = clip_model.get_image_features(**inputs)
-            query_features = query_features / query_features.norm(p=2, dim=-1, keepdim=True)
-            query_emb = query_features.cpu().numpy().flatten()
-
-        # Predict probability
-        pred_prob = float(classifier_model.predict(np.expand_dims(query_emb, axis=0), verbose=0)[0][0])
-        is_impressionism = pred_prob >= threshold
-
-        similar_images = []
-        if is_impressionism and len(imp_embeddings) > 0:
-            # Calculate Cosine Similarities
-            similarities = np.dot(imp_embeddings, query_emb)
-            # Get top N indices
-            top_indices = np.argsort(similarities)[::-1][:top_n]
-
-            for idx in top_indices:
-                sim_score = float(similarities[idx])
-                sim_percentage = max(0.0, sim_score) * 100
-                rel_path = imp_filenames[idx]
-                basename = os.path.basename(rel_path)
-
-                # Retrieve metadata
-                meta = metadata_map.get(basename)
-                if not meta:
-                    meta = parse_filename_fallback(rel_path)
-
-                similar_images.append({
-                    "filename": rel_path.replace("\\", "/"),
-                    "similarity": sim_percentage,
-                    "artist": meta["artist"],
-                    "title": meta["title"]
-                })
-
+        is_impressionism, pred_prob, similar_images = perform_analysis(file, threshold, top_n)
         return jsonify({
             "is_impressionism": is_impressionism,
             "probability": pred_prob,
             "similar_images": similar_images
         })
-
     except Exception as e:
-        print(f"Error during analysis: {e}")
+        print(f"Error during API analysis: {e}")
+        return jsonify({"error": f"Internal error: {str(e)}"}), 500
+
+@app.route('/analyze', methods=['POST'])
+def analyze_report():
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file uploaded"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "No image file selected"}), 400
+    
+    threshold = float(request.form.get('threshold', 0.5))
+    top_n = int(request.form.get('top_n', 5))
+
+    try:
+        is_impressionism, pred_prob, similar_images = perform_analysis(file, threshold, top_n)
+        
+        # Format similar images with percent key and conform to report spec
+        similar_report = []
+        for sim in similar_images:
+            similar_report.append({
+                "artist": sim["artist"],
+                "title": sim["title"],
+                "similarity": sim["similarity"],
+                "filename": sim["filename"]
+            })
+            
+        return jsonify({
+            "is_impressionist": is_impressionism,
+            "probability": pred_prob * 100.0,
+            "threshold": threshold * 100.0,
+            "similar": similar_report
+        })
+    except Exception as e:
+        print(f"Error during report analysis: {e}")
         return jsonify({"error": f"Internal error: {str(e)}"}), 500
 
 if __name__ == '__main__':

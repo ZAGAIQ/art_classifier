@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
-from tqdm import tqdm
+
 
 def main():
     data_dir = "balanced_art_dataset"

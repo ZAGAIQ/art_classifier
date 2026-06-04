@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 import keras
 from sklearn.model_selection import train_test_split
 import json
@@ -69,7 +68,7 @@ def main():
     history = model.fit(
         X_train, y_train,
         validation_data=(X_val, y_val),
-        epochs=40,  # Linear model learns fast and is highly stable
+        epochs=100,  # Linear model learns fast and is highly stable, early stopping will stop at ~84
         batch_size=32,
         callbacks=[early_stopping],
         verbose=1
